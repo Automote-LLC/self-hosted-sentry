@@ -30,25 +30,25 @@ Railway.app is a platform that allows you to deploy Docker Compose applications 
 
 Railway will automatically detect your `docker-compose.yml` file. You need to configure the service to run the installation script.
 
-#### Option A: Using Railway's Start Command (Recommended)
+#### Option A: Using railway.toml (Recommended)
+
+A `railway.toml` file is already included in the repository. It configures Railway to:
+1. Run the installation script first (`./install.sh`)
+2. Then start all services with `docker compose up --wait`
+
+The file is already configured correctly. Railway will automatically use it.
+
+#### Option B: Using Railway's Start Command
+
+If you prefer to set it manually in Railway's dashboard:
 
 1. In your Railway project, go to the service settings
 2. Set the **Start Command** to:
    ```bash
-   ./install.sh --skip-user-creation --skip-commit-check
+   bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'
    ```
 
-#### Option B: Using railway.toml
-
-Create a `railway.toml` file in your repository root:
-
-```toml
-[build]
-builder = "dockerfile"
-
-[deploy]
-startCommand = "./install.sh --skip-user-creation --skip-commit-check"
-```
+**Note**: The `railway.toml` file is the recommended approach as it's already configured and version-controlled.
 
 ### 3. Set Required Environment Variables
 
@@ -151,11 +151,13 @@ In Railway environment, services are automatically started with `docker compose 
 
 ## Troubleshooting
 
-### Issue: "Neither podman nor docker is installed"
+### Issue: "Neither podman nor docker is installed" or crashes at "Detecting Docker platform"
 
 **Solution**: This should be automatically handled by Railway detection. If you still see this:
 - Ensure Railway environment variables are set (they should be automatic)
 - Check that you're using the latest version of the installation scripts
+- Verify that `RAILWAY_ENVIRONMENT`, `RAILWAY_SERVICE_NAME`, or `RAILWAY_PROJECT_ID` is set in your Railway service
+- If the issue persists, you can manually set `DOCKER_PLATFORM=linux/amd64` as an environment variable in Railway
 
 ### Issue: User creation fails
 
@@ -260,20 +262,20 @@ To update your Sentry instance:
 - All services run in a single Railway service (monolithic deployment)
 - For production use, consider dedicated infrastructure for better performance
 
-## Example railway.toml
+## railway.toml Configuration
 
-Here's a complete example `railway.toml` configuration:
+The `railway.toml` file is already included in the repository with the correct configuration:
 
 ```toml
 [build]
 builder = "dockerfile"
 
 [deploy]
-startCommand = "./install.sh --skip-user-creation --skip-commit-check"
-
-[env]
-COMPOSE_PROFILES = "feature-complete"
-SENTRY_EVENT_RETENTION_DAYS = "90"
+startCommand = "bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'"
 ```
 
-Note: Sensitive variables like `SENTRY_INITIAL_USER_EMAIL` and `SENTRY_INITIAL_USER_PASSWORD` should be set in Railway's dashboard, not in the `railway.toml` file.
+This ensures that:
+1. The installation script runs first to set up everything
+2. Then `docker compose up --wait` starts all services and waits for them to be healthy
+
+**Important**: Sensitive variables like `SENTRY_INITIAL_USER_EMAIL` and `SENTRY_INITIAL_USER_PASSWORD` should be set in Railway's dashboard (Variables tab), not in the `railway.toml` file.

@@ -1,0 +1,22 @@
+# Railway configuration for Self-Hosted Sentry
+# This file configures Railway to deploy Sentry using Docker Compose
+
+[build]
+# Railway will use Docker Compose automatically when it detects docker-compose.yml
+builder = "dockerfile"
+
+[deploy]
+# IMPORTANT: The && operator ensures docker compose ONLY runs after install.sh completes successfully
+# 1. First, install.sh runs completely (setup, migrations, config, etc.)
+# 2. Only if install.sh exits with code 0 (success), then docker compose up --wait runs
+# 3. This ensures all installation steps finish before services start
+startCommand = "bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'"
+
+# Health check configuration
+# Railway will check if the service is responding
+healthcheckPath = "/"
+healthcheckTimeout = 300
+
+# Restart policy
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

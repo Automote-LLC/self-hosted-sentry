@@ -2,6 +2,18 @@ source install/_detect-container-engine.sh
 
 echo "${_group}Detecting Docker platform"
 
+# Check if we're in Railway environment
+# In Railway, Docker info might not be accessible during install, so we default to linux/amd64
+if [[ -n "${RAILWAY_ENVIRONMENT:-}" ]] || [[ -n "${RAILWAY_SERVICE_NAME:-}" ]] || [[ -n "${RAILWAY_PROJECT_ID:-}" ]]; then
+  # Railway typically runs on linux/amd64, default to that
+  # User can override with DOCKER_PLATFORM environment variable if needed
+  export DOCKER_ARCH="${DOCKER_ARCH:-amd64}"
+  export DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+  echo "Railway environment detected, using platform: $DOCKER_PLATFORM"
+  echo "${_endgroup}"
+  return 0 2>/dev/null || exit 0
+fi
+
 # Sentry SaaS uses stock Yandex ClickHouse, but they don't provide images that
 # support ARM, which is relevant especially for Apple M1 laptops, Sentry's
 # standard developer environment. As a workaround, we use an altinity image

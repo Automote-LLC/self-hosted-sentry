@@ -1,4 +1,25 @@
-if [[ "$MINIMIZE_DOWNTIME" ]]; then
+# Check if we're in Railway environment
+if [[ -n "${RAILWAY_ENVIRONMENT:-}" ]] || [[ -n "${RAILWAY_SERVICE_NAME:-}" ]] || [[ -n "${RAILWAY_PROJECT_ID:-}" ]]; then
+  echo "${_group}Starting services in Railway environment ..."
+  
+  # In Railway, automatically start all services
+  if [[ "${_ENV}" =~ ".env.custom" ]]; then
+    $dc_base --env-file .env --env-file ${_ENV} up --wait
+  else
+    if [[ "$CONTAINER_ENGINE" == "podman" ]]; then
+      if [[ "$COMPOSE_PROFILES" == "feature-complete" ]]; then
+        $dc_base --profile=feature-complete up --force-recreate -d
+      else
+        $dc_base up --force-recreate -d
+      fi
+    else
+      $dc_base up --wait
+    fi
+  fi
+  
+  echo "Services started successfully in Railway environment."
+  echo "${_endgroup}"
+elif [[ "$MINIMIZE_DOWNTIME" ]]; then
   echo "${_group}Waiting for Sentry to start ..."
 
   # Start the whole setup, except nginx and relay.

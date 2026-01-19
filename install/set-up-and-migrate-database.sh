@@ -22,6 +22,10 @@ if [[ -z "${SKIP_SENTRY_MIGRATIONS:-}" ]]; then
   else
     $dcr web upgrade --create-kafka-topics
   fi
+  
+  # Create initial user if environment variables are set
+  # This is useful for automated deployments like Railway
+  source install/create-initial-user.sh
 else
   echo "Skipped DB migrations due to SKIP_SENTRY_MIGRATIONS=$SKIP_SENTRY_MIGRATIONS"
 fi

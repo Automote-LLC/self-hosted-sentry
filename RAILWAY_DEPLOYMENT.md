@@ -28,27 +28,16 @@ Railway.app is a platform that allows you to deploy Docker Compose applications 
 
 ### 2. Configure Railway Service
 
-Railway will automatically detect your `docker-compose.yml` file. You need to configure the service to run the installation script.
+Railway will use the `Dockerfile` in the repository root. The Dockerfile is configured to:
+1. Set up Docker and docker-compose
+2. Run the installation script (`./install.sh`)
+3. Then start all services with `docker compose up --wait`
 
-#### Option A: Using railway.toml (Recommended)
+The `railway.toml` file is already configured to use the Dockerfile builder. Railway will automatically:
+- Build the Docker image from the Dockerfile
+- Run the container with the entrypoint script that handles installation and service startup
 
-A `railway.toml` file is already included in the repository. It configures Railway to:
-1. Run the installation script first (`./install.sh`)
-2. Then start all services with `docker compose up --wait`
-
-The file is already configured correctly. Railway will automatically use it.
-
-#### Option B: Using Railway's Start Command
-
-If you prefer to set it manually in Railway's dashboard:
-
-1. In your Railway project, go to the service settings
-2. Set the **Start Command** to:
-   ```bash
-   bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'
-   ```
-
-**Note**: The `railway.toml` file is the recommended approach as it's already configured and version-controlled.
+**No additional configuration needed** - Railway will use the Dockerfile automatically.
 
 ### 3. Set Required Environment Variables
 
@@ -125,6 +114,17 @@ Railway automatically exposes ports, but you should verify:
 
 ## How It Works
 
+### Dockerfile Approach
+
+The `Dockerfile` in the repository root:
+1. Uses `docker:24-cli` as the base image (includes Docker CLI)
+2. Installs docker-compose standalone
+3. Copies all project files
+4. Creates an entrypoint script that:
+   - Checks Docker availability
+   - Runs `./install.sh --skip-user-creation --skip-commit-check`
+   - Then runs `docker compose up --wait` to start all services
+
 ### Railway Environment Detection
 
 The installation script automatically detects Railway environment by checking for Railway-specific environment variables:
@@ -135,7 +135,7 @@ The installation script automatically detects Railway environment by checking fo
 When detected, the script:
 1. Assumes Docker is available (even if not in PATH during install)
 2. Skips manual Docker detection
-3. Automatically starts services after installation
+3. Defaults to `linux/amd64` platform (no `docker info` call needed)
 4. Creates initial user if credentials are provided
 
 ### Automatic User Creation
@@ -147,7 +147,10 @@ If `SENTRY_INITIAL_USER_EMAIL` and `SENTRY_INITIAL_USER_PASSWORD` are set:
 
 ### Service Startup
 
-In Railway environment, services are automatically started with `docker compose up --wait` after installation completes.
+The Dockerfile's entrypoint ensures:
+1. Installation completes first (`install.sh`)
+2. Only then does `docker compose up --wait` run
+3. All services start and wait for health checks
 
 ## Troubleshooting
 
@@ -171,12 +174,14 @@ In Railway environment, services are automatically started with `docker compose 
 - Check deployment logs for migration status
 - Wait for all services to be healthy before accessing
 
-### Issue: Services not starting
+### Issue: Services not starting or Docker not available
 
 **Solution**:
 - Check Railway deployment logs
-- Verify Docker Compose is working: Railway should handle this automatically
-- Ensure sufficient resources are allocated to your Railway service
+- Verify Railway has Docker support enabled (may require Railway Pro plan or specific configuration)
+- Ensure the Dockerfile is being used (check Railway build logs)
+- Railway may need privileged mode for Docker-in-Docker - check Railway service settings
+- If Docker is not available, Railway might need to be configured to use docker-compose.yml directly instead
 
 ### Issue: Cannot access Sentry UI
 
@@ -262,20 +267,28 @@ To update your Sentry instance:
 - All services run in a single Railway service (monolithic deployment)
 - For production use, consider dedicated infrastructure for better performance
 
-## railway.toml Configuration
+## Dockerfile and railway.toml Configuration
 
-The `railway.toml` file is already included in the repository with the correct configuration:
+The repository includes both a `Dockerfile` and `railway.toml`:
 
+### Dockerfile
+The `Dockerfile` sets up:
+- Docker CLI and docker-compose
+- All required utilities (bash, curl, git, etc.)
+- An entrypoint script that runs installation then starts services
+
+### railway.toml
 ```toml
 [build]
 builder = "dockerfile"
 
 [deploy]
-startCommand = "bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'"
+# startCommand is handled by Dockerfile's ENTRYPOINT
 ```
 
-This ensures that:
-1. The installation script runs first to set up everything
-2. Then `docker compose up --wait` starts all services and waits for them to be healthy
+The Dockerfile's entrypoint ensures:
+1. Installation script runs first (`./install.sh`)
+2. Only after successful installation, `docker compose up --wait` runs
+3. All services start and wait for health checks
 
-**Important**: Sensitive variables like `SENTRY_INITIAL_USER_EMAIL` and `SENTRY_INITIAL_USER_PASSWORD` should be set in Railway's dashboard (Variables tab), not in the `railway.toml` file.
+**Important**: Sensitive variables like `SENTRY_INITIAL_USER_EMAIL` and `SENTRY_INITIAL_USER_PASSWORD` should be set in Railway's dashboard (Variables tab), not in configuration files.

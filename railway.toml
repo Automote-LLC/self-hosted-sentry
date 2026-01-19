@@ -3,14 +3,13 @@
 
 [build]
 # Railway will use Docker Compose automatically when it detects docker-compose.yml
+# Change to "dockerfile" if you want to use the Dockerfile instead
 builder = "dockerfile"
 
 [deploy]
-# IMPORTANT: The && operator ensures docker compose ONLY runs after install.sh completes successfully
-# 1. First, install.sh runs completely (setup, migrations, config, etc.)
-# 2. Only if install.sh exits with code 0 (success), then docker compose up --wait runs
-# 3. This ensures all installation steps finish before services start
-startCommand = "bash -c './install.sh --skip-user-creation --skip-commit-check && docker compose up --wait'"
+# The Dockerfile's entrypoint handles running install.sh then docker compose up --wait
+# No need to specify startCommand here - the Dockerfile entrypoint handles everything
+# startCommand is handled by the Dockerfile's ENTRYPOINT
 
 # Health check configuration
 # Railway will check if the service is responding
